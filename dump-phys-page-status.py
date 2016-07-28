@@ -9,6 +9,9 @@ Some of these code are borrowed from RAMpage project by Horst Schirmeier, thanks
 
 Author: Wang Xiaoqiang <wang_xiaoq@126.com> Distributed & Embeded System Lab
 License: GPL v2
+
+
+Usage: sudo ./dump-phys-page-status.py
 '''
 
 import struct
