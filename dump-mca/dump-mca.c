@@ -6,6 +6,7 @@
 #include <asm/msr.h>
 #include <asm/msr-index.h>
 
+#define THRESHOLD ((1UL << 15) - 1)
 #define CMCI_EN (1UL << 30)
 
 static int dump_mca_init(void)
@@ -14,6 +15,7 @@ static int dump_mca_init(void)
 	int bank_num;
 	u64 mcgcap;
 	u64 mci_ctl2;
+	u64 mci_ctl2_bak;
 
 
 	rdmsrl(MSR_IA32_MCG_CAP, mcgcap);
@@ -34,10 +36,25 @@ static int dump_mca_init(void)
 
 	for (i = 0; i < bank_num; i++) {
 		rdmsrl(MSR_IA32_MCx_CTL2(i), mci_ctl2);
+		mci_ctl2_bak = mci_ctl2;
+
+		mci_ctl2 |= THRESHOLD;
+		wrmsrl(MSR_IA32_MCx_CTL2(i), mci_ctl2);
+		rdmsrl(MSR_IA32_MCx_CTL2(i), mci_ctl2);
+		pr_info("Bank %d %s CMCI threshold.", i, ((mci_ctl2 & MCI_CTL2_CMCI_THRESHOLD_MASK)
+					== THRESHOLD) ? "support" : "not support");
+
+		/* restore the MCi_CTL2 to original state */
+		wrmsrl(MSR_IA32_MCx_CTL2(i), mci_ctl2_bak);
+
+		mci_ctl2 = mci_ctl2_bak;
 		mci_ctl2 |= CMCI_EN;
 		wrmsrl(MSR_IA32_MCx_CTL2(i), mci_ctl2);
 		rdmsrl(MSR_IA32_MCx_CTL2(i), mci_ctl2);
 		pr_info("Bank %d %s CMCI signal interface.", i, (mci_ctl2 & CMCI_EN) ? "support" : "not support");
+
+		/* restore */
+		wrmsrl(MSR_IA32_MCx_CTL2(i), mci_ctl2_bak);
 	}
 
 	pr_info("----------------DUMP MCA END----------------");
